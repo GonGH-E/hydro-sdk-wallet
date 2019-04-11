@@ -1,4 +1,4 @@
-import React, { PureComponent } from "react";
+import * as React from "react";
 
 export interface Option {
   value: any;
@@ -22,7 +22,7 @@ interface State {
   unfolded: boolean;
 }
 
-export default class Select extends PureComponent<Props, State> {
+export default class Select extends React.PureComponent<Props, State> {
   private id: string;
   private container: any;
 

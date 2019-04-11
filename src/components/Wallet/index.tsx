@@ -1,4 +1,4 @@
-import React from "react";
+import * as React from "react";
 import { connectorInstance, Connector } from "../../connector";
 import "./style.css";
 import {
@@ -15,7 +15,7 @@ interface State {
 
 interface Props {}
 
-class Wallet extends React.Component<Props, State> {
+class Wallet extends React.PureComponent<Props, State> {
   private connector: Connector;
   constructor(props: Props) {
     super(props);
