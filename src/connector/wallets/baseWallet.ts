@@ -1,4 +1,4 @@
-import { txParams } from "..";
+import { txParams } from "../connector";
 import { BigNumber } from "ethers/utils";
 
 export default abstract class baseWallet {

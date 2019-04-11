@@ -1,4 +1,4 @@
-import { txParams } from "..";
+import { txParams } from "../connector";
 import BaseWallet from "./baseWallet";
 import { BigNumber } from "ethers/utils";
 

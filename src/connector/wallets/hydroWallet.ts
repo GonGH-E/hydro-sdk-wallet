@@ -1,5 +1,5 @@
 import { Wallet, utils, getDefaultProvider, providers } from "ethers";
-import { txParams } from "..";
+import { txParams } from "../connector";
 import { Provider, TransactionResponse } from "ethers/providers";
 import BaseWallet from "./baseWallet";
 import { BigNumber } from "ethers/utils";

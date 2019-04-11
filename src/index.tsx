@@ -1,5 +1,4 @@
-import React from "react";
-import ReactDOM from "react-dom";
-import App from "./App";
+import { Wallet } from "./components";
+import { connectorInstance, Connector } from "./connector";
 
-ReactDOM.render(<App />, document.getElementById("root"));
+export { Wallet, connectorInstance, Connector };

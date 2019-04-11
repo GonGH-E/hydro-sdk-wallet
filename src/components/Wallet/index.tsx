@@ -1,5 +1,5 @@
 import React from "react";
-import Connector from "../../connector";
+import { connectorInstance, Connector } from "../../connector";
 import "./style.css";
 import {
   HydroWallet,
@@ -19,7 +19,8 @@ class Wallet extends React.Component<Props, State> {
   private connector: Connector;
   constructor(props: Props) {
     super(props);
-    this.connector = new Connector(this.forceUpdate.bind(this));
+    this.connector = connectorInstance;
+    this.connector.setForceUpdate(this.forceUpdate.bind(this));
     this.state = {
       hidden: false,
       selectedWalletName: getWalletName(this.connector.selectedType)
