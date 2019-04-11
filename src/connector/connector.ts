@@ -56,7 +56,11 @@ export default class Connector {
     return this.connections.get(type);
   }
 
-  public getSelectedAddress(type: string): string | null {
+  public getSelectedAddress(): string | null {
+    return this.getAddress(this.selectedType);
+  }
+
+  public getAddress(type: string): string | null {
     const connection = this.getConnection(type);
     return connection ? connection.getAddress() : null;
   }

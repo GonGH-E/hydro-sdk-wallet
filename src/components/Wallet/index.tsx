@@ -1,6 +1,5 @@
 import * as React from "react";
 import { connectorInstance, Connector } from "../../connector";
-import "./style.css";
 import {
   HydroWallet,
   getWalletName,
@@ -97,7 +96,7 @@ class Wallet extends React.PureComponent<Props, State> {
       (type: string) => {
         return {
           value: type,
-          text: this.connector.getSelectedAddress(type)!,
+          text: this.connector.getAddress(type)!,
           onSelect: (option: Option) => {
             this.handleSelect(option.value);
           }
