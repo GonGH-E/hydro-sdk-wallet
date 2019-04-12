@@ -1,16 +1,14 @@
-import { Wallet, utils, getDefaultProvider, providers } from "ethers";
+import { Wallet, utils, getDefaultProvider, providers, Contract } from "ethers";
 import { txParams } from "../connector";
-import { Provider, TransactionResponse } from "ethers/providers";
+import { Provider } from "ethers/providers";
 import BaseWallet from "./baseWallet";
 import { BigNumber } from "ethers/utils";
-
-export const NeedUnlockWalletError = new Error("Need Unlock Wallet");
 
 export default class HydroWallet extends BaseWallet {
   private static TIMEOUT = 15 * 60 * 1000; // 15 minutes
   private static WALLETS_KEY = "Hydro-Wallets";
-  private static nodeUrl?: string;
   private static _cache: Map<string, any> = new Map();
+  public nodeUrl?: string;
   public static TYPE_PREFIX = "Hydro-Wallet:";
   public static WALLET_NAME = "Hydro Wallet";
   public _address: string | null = null;
@@ -24,9 +22,20 @@ export default class HydroWallet extends BaseWallet {
     this._wallet = wallet;
   }
 
-  public static async createRandom(): Promise<HydroWallet> {
+  public static async createRandom(password: string): Promise<HydroWallet> {
     const wallet = await Wallet.createRandom();
     const hydroWallet = new HydroWallet(wallet.address, wallet);
+    await hydroWallet.save(password);
+    return hydroWallet;
+  }
+
+  public static async import(
+    privateKey: string,
+    password: string
+  ): Promise<HydroWallet> {
+    const wallet = await new Wallet(privateKey);
+    const hydroWallet = new HydroWallet(wallet.address, wallet);
+    await hydroWallet.save(password);
     return hydroWallet;
   }
 
@@ -80,8 +89,20 @@ export default class HydroWallet extends BaseWallet {
     return this._address;
   }
 
-  public static setNodeUrl(nodeUrl: string): void {
-    HydroWallet.nodeUrl = nodeUrl;
+  public getContract(contractAddress: string, abi: any): Contract {
+    return new Contract(contractAddress, abi, this.getProvider());
+  }
+
+  public contractCall(
+    contract: Contract,
+    method: string,
+    ...args: any
+  ): Promise<any> {
+    return contract[method](...args);
+  }
+
+  public setNodeUrl(nodeUrl: string): void {
+    this.nodeUrl = nodeUrl;
   }
 
   public static list(): HydroWallet[] {
@@ -115,7 +136,7 @@ export default class HydroWallet extends BaseWallet {
   public signMessage(message: string): Promise<string> {
     return new Promise((resolve, reject) => {
       if (!this._wallet) {
-        reject(NeedUnlockWalletError);
+        reject(BaseWallet.NeedUnlockWalletError);
       } else {
         resolve(this._wallet.signMessage(message));
       }
@@ -126,17 +147,18 @@ export default class HydroWallet extends BaseWallet {
     return this.signMessage(message);
   }
 
-  public sendTransaction(txParams: txParams): Promise<TransactionResponse> {
+  public async sendTransaction(
+    txParams: txParams
+  ): Promise<string | undefined> {
     if (txParams.value) {
       txParams.value = new BigNumber(txParams.value);
     }
-    return new Promise((resolve, reject) => {
-      if (!this._wallet) {
-        reject(NeedUnlockWalletError);
-      } else {
-        resolve(this._wallet.sendTransaction(txParams));
-      }
-    });
+    if (!this._wallet) {
+      return Promise.reject(BaseWallet.NeedUnlockWalletError);
+    } else {
+      const tx = await this._wallet.sendTransaction(txParams);
+      return tx.hash;
+    }
   }
 
   public getAccounts(): Promise<string[]> {
@@ -152,7 +174,7 @@ export default class HydroWallet extends BaseWallet {
   public loadBalance(): Promise<BigNumber> {
     return new Promise((resolve, reject) => {
       if (!this._wallet) {
-        reject(NeedUnlockWalletError);
+        reject(BaseWallet.NeedUnlockWalletError);
       } else {
         resolve(this._wallet.getBalance());
       }
@@ -178,9 +200,13 @@ export default class HydroWallet extends BaseWallet {
     return !this._wallet;
   }
 
+  public isSupported() {
+    return true;
+  }
+
   private getProvider(): Provider {
-    if (HydroWallet.nodeUrl) {
-      return new providers.JsonRpcProvider(HydroWallet.nodeUrl);
+    if (this.nodeUrl) {
+      return new providers.JsonRpcProvider(this.nodeUrl);
     } else {
       return getDefaultProvider("ropsten");
     }

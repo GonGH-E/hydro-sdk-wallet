@@ -1,11 +1,13 @@
-import HydroWallet, { NeedUnlockWalletError } from "./hydroWallet";
-import ExtensionWallet, { NotFoundAddressError } from "./extensionWallet";
+import HydroWallet from "./hydroWallet";
+import ExtensionWallet from "./extensionWallet";
+import BaseWallet from "./baseWallet";
 
+const { NeedUnlockWalletError, NotSupportedError } = BaseWallet;
 export {
   HydroWallet,
   ExtensionWallet,
   NeedUnlockWalletError,
-  NotFoundAddressError
+  NotSupportedError
 };
 
 export const getWalletName = (type: string): string => {
@@ -16,4 +18,8 @@ export const getWalletName = (type: string): string => {
   } else {
     return "Unknown Wallet";
   }
+};
+
+export const isHydroWallet = (type: string): boolean => {
+  return getWalletName(type) === HydroWallet.WALLET_NAME;
 };

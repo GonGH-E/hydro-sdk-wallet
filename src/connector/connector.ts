@@ -2,7 +2,7 @@ import {
   HydroWallet,
   ExtensionWallet,
   NeedUnlockWalletError,
-  NotFoundAddressError
+  NotSupportedError
 } from "./wallets";
 import { BigNumber } from "ethers/utils";
 
@@ -22,34 +22,45 @@ export interface txParams {
   gasLimit?: number;
 }
 
-type Connection = HydroWallet | typeof ExtensionWallet;
+export type Connection = HydroWallet | typeof ExtensionWallet;
 
 export default class Connector {
   private accountWatchers: Map<string, number> = new Map();
   public connections: Map<string, Connection> = new Map();
   public selectedType: string;
   private nodeUrl?: string;
-  private forceUpdate?: () => any;
+  private forceUpdate: Map<string, () => any> = new Map();
+  // private updateAccountCallback?: (account?: string) => any
+  // private updateBalancecallback?: (balance?: BigNumber) => any
 
   public constructor() {
-    this.loadHydroWallets();
-    this.loadExtensionWallet();
     this.selectedType =
       window.localStorage.getItem("HydroWallet:lastSelectedType") ||
-      this.getSupportedTypes()[1];
+      ExtensionWallet.getType();
     this.startAccountWatchers();
   }
 
-  public setNodeUrl(nodeUrl: string) {
+  public setNodeUrl(nodeUrl: string): void {
     this.nodeUrl = nodeUrl;
+    this.refreshWatchers();
   }
 
-  public setForceUpdate(forceUpdate: () => any) {
-    this.forceUpdate = forceUpdate;
+  public setForceUpdate(componentName: string, forceUpdate: () => any): void {
+    console.log("set forceUpdate: ", componentName);
+    this.forceUpdate.set(componentName, forceUpdate);
   }
 
-  public getSupportedTypes() {
+  public removeForceUpdate(componentName: string): void {
+    console.log("remove forceUpdate: ", componentName);
+    this.forceUpdate.delete(componentName);
+  }
+
+  public getSupportedTypes(): string[] {
     return Array.from(this.connections.keys());
+  }
+
+  public getSelectedConnection(): Connection | undefined {
+    return this.getConnection(this.selectedType);
   }
 
   public getConnection(type: string): Connection | undefined {
@@ -65,6 +76,13 @@ export default class Connector {
     return connection ? connection.getAddress() : null;
   }
 
+  public unlock(password: string): void {
+    const selectedConnection = this.getSelectedConnection();
+    if (selectedConnection) {
+      selectedConnection.unlock(password);
+    }
+  }
+
   public selectConnection(type: string): void {
     if (type === this.selectedType) {
       return;
@@ -76,32 +94,36 @@ export default class Connector {
       this.selectedType = type;
       window.localStorage.setItem("HydroWallet:lastSelectedType", type);
       this.refreshWatchers();
-      if (this.forceUpdate) {
-        this.forceUpdate();
-      }
+      this.callForceUpdate();
       return;
     } else {
       return;
     }
   }
 
+  private callForceUpdate(): void {
+    console.log("call force update");
+    this.forceUpdate.forEach(fn => {
+      fn();
+    });
+  }
   private loadExtensionWallet(): void {
-    if (window && window.web3) {
-      this.connections.set(ExtensionWallet.getType(), ExtensionWallet);
-    }
+    this.connections.set(ExtensionWallet.getType(), ExtensionWallet);
   }
 
-  private loadHydroWallets() {
-    if (this.nodeUrl) {
-      HydroWallet.setNodeUrl(this.nodeUrl);
-    }
+  private loadHydroWallets(): void {
     HydroWallet.list().map(wallet => {
       const type = wallet.getType();
+      if (this.nodeUrl) {
+        wallet.setNodeUrl(this.nodeUrl);
+      }
       this.connections.set(type, wallet);
     });
   }
 
   private startAccountWatchers(): void {
+    this.loadHydroWallets();
+    this.loadExtensionWallet();
     const promises: Array<Promise<any>> = [];
     promises.push(this.watchWallet(ExtensionWallet.getType()));
     HydroWallet.list().map((wallet: HydroWallet) => {
@@ -127,6 +149,7 @@ export default class Connector {
     };
 
     const watchBalance = async (timer = 0) => {
+      console.log("watch Balance");
       const timerKey = `${type}-balance`;
       if (
         timer &&
@@ -162,13 +185,12 @@ export default class Connector {
     }
     if (account !== connection.getAddress()) {
       connection.setAddress(account);
-      if (this.forceUpdate) {
-        this.forceUpdate();
-      }
+      this.callForceUpdate();
     }
   }
 
   private loadBalance = async (type: string): Promise<void> => {
+    console.log("load Balance", type);
     const connection = this.connections.get(type);
     if (!connection) {
       return;
@@ -176,14 +198,13 @@ export default class Connector {
 
     try {
       const balance = await connection.loadBalance();
-      if (balance === connection.getBalance()) {
+      console.log(connection.getAddress(), balance);
+      if (!balance.eq(connection.getBalance())) {
         connection.setBalance(balance);
-        if (this.forceUpdate) {
-          this.forceUpdate();
-        }
+        this.callForceUpdate();
       }
     } catch (e) {
-      if (e !== NeedUnlockWalletError && e !== NotFoundAddressError) {
+      if (e !== NeedUnlockWalletError && e !== NotSupportedError) {
         throw e;
       }
     }

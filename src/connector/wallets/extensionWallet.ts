@@ -1,8 +1,7 @@
 import { txParams } from "../connector";
 import BaseWallet from "./baseWallet";
 import { BigNumber } from "ethers/utils";
-
-export const NotFoundAddressError = new Error("Not Found Address");
+import { Contract } from "ethers";
 
 export default abstract class ExtensionWallet extends BaseWallet {
   public static WALLET_NAME = "Extension Wallet";
@@ -30,14 +29,40 @@ export default abstract class ExtensionWallet extends BaseWallet {
     return this._balance;
   }
 
+  public static getContract(contractAddress: string, abi: any): Contract {
+    if (!this.isSupported()) {
+      throw BaseWallet.NotSupportedError;
+    }
+    return window.web3.eth.contract(abi).at(contractAddress);
+  }
+
+  public static contractCall(
+    contract: Contract,
+    method: string,
+    ...args: any
+  ): Promise<any> {
+    return new Promise((resolve, reject) => {
+      contract[method](...args, (err: Error, res: any) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(res);
+        }
+      });
+    });
+  }
+
   public static signMessage(message: string): Promise<string> | null {
     return this.personalSignMessage(message);
   }
 
   public static personalSignMessage(message: string): Promise<string> {
     return new Promise((resolve, reject) => {
+      if (!this.isSupported()) {
+        reject(BaseWallet.NotSupportedError);
+      }
       if (!this._address) {
-        reject(NotFoundAddressError);
+        reject(BaseWallet.NeedUnlockWalletError);
       }
       window.web3.personal.sign(
         message,
@@ -53,10 +78,15 @@ export default abstract class ExtensionWallet extends BaseWallet {
     });
   }
 
-  public static sendTransaction(txParams: txParams): Promise<string> {
+  public static sendTransaction(
+    txParams: txParams
+  ): Promise<string | undefined> {
     return new Promise((resolve, reject) => {
+      if (!this.isSupported()) {
+        reject(BaseWallet.NotSupportedError);
+      }
       if (!this._address) {
-        reject(NotFoundAddressError);
+        reject(BaseWallet.NeedUnlockWalletError);
       }
       window.web3.eth.sendTransaction(txParams, (err: Error, res: string) => {
         if (err) {
@@ -70,6 +100,9 @@ export default abstract class ExtensionWallet extends BaseWallet {
 
   public static getAccounts(): Promise<string[]> {
     return new Promise((resolve, reject) => {
+      if (!this.isSupported()) {
+        reject(BaseWallet.NotSupportedError);
+      }
       window.web3.eth.getAccounts((err: Error, accounts: string[]) => {
         if (err) {
           reject(err);
@@ -82,8 +115,11 @@ export default abstract class ExtensionWallet extends BaseWallet {
 
   public static loadBalance(): Promise<BigNumber> {
     return new Promise((resolve, reject) => {
+      if (!this.isSupported()) {
+        reject(BaseWallet.NotSupportedError);
+      }
       if (!this._address) {
-        reject(NotFoundAddressError);
+        reject(BaseWallet.NeedUnlockWalletError);
       }
       window.web3.eth.getBalance(
         this._address,
@@ -99,6 +135,10 @@ export default abstract class ExtensionWallet extends BaseWallet {
   }
 
   public static enableBrowserExtensionWallet(): void {
+    if (!this.isSupported()) {
+      throw BaseWallet.NotSupportedError;
+    }
+
     if (!window.ethereum) {
       return;
     }
@@ -110,7 +150,13 @@ export default abstract class ExtensionWallet extends BaseWallet {
     });
   }
 
+  public static unlock(password: string): void {}
+
   public static isLocked(): boolean {
     return !this._address;
+  }
+
+  public static isSupported(): boolean {
+    return !!window.web3;
   }
 }

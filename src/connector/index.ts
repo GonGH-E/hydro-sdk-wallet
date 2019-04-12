@@ -1,5 +1,5 @@
-import Connector from "./connector";
+import Connector, { Connection } from "./connector";
 
-export const connectorInstance = new Connector();
+export const connector = new Connector();
 
-export { Connector };
+export { Connector, Connection };

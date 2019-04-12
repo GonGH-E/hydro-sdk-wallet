@@ -1,5 +1,5 @@
 import { Wallet } from "./components";
-import { connectorInstance, Connector } from "./connector";
+import { connector, Connector } from "./connector";
 import "../index.css";
 
-export { Wallet, connectorInstance, Connector };
+export { Wallet, connector, Connector };
